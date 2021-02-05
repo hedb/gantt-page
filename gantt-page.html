@@ -1,0 +1,133 @@
+<html>
+<head> 
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+    <script>
+        
+
+
+        function CSV_to_array( text, delimeter )    {
+            ret = []
+            lines = text.split('\n')
+            lines.forEach(function (line_txt, index) {                
+                values = line_txt.split(delimeter)
+                ret.push(values)
+            }); 
+            return ret
+        }
+
+        function validate_and_parse_value(rec,col,item) {
+            if (col == 'Start Date') {
+                item = item.trim() == ''?null:new Date(Date.parse(item))
+                if (item != null) {
+                    if (ganttObj.defaultStartDateMillis == null || ganttObj.defaultStartDateMillis > item){
+                        ganttObj.defaultStartDateMillis = item
+                    }
+                }
+            } else if (col == '80%') {
+                rec['duration'] = item*7 * 24 * 60 * 60 * 1000; 
+            }
+            return item
+        }
+
+        function create_gantt() {
+            window.ganttObj = {'lines' : [], defaultStartDateMillis: null}
+            text = document.getElementById('user_input').value.trim()
+            lines = CSV_to_array(text,'\t')
+            columns = {}
+            lines[0].forEach(function (item, index) {
+                columns[index] = item
+            }); 
+            
+            for (var i = 1; i < lines.length; i++) {
+                rec = {}
+                lines[i].forEach(function (item, index) {
+                    col = columns[index]
+                    item = validate_and_parse_value(rec,col,item)
+                    rec[col] = item
+                }); 
+                ganttObj.lines.push(rec)
+            }
+            // alert(ganttObj.lines[2]['ID'])
+
+            drawChart()
+        }
+
+
+
+
+
+    google.charts.load('current', {'packages':['gantt']});
+    // google.charts.setOnLoadCallback(drawChart);
+
+    function drawChart() {
+
+      var data = new google.visualization.DataTable();
+      data.addColumn('string', 'Task ID');
+      data.addColumn('string', 'Task Name');
+      data.addColumn('string', 'Resource ID');
+      data.addColumn('date', 'Start Date');
+      data.addColumn('date', 'End Date');
+      data.addColumn('number', 'Duration');
+      data.addColumn('number', 'Percent Complete');
+      data.addColumn('string', 'Dependencies');
+
+//ID	Task	Start Date	Resource	Dependant on	Details	80%	90%
+      for (var i = 0; i < ganttObj.lines.length; i++) {
+        data.addRows([
+        [
+            ganttObj.lines[i].ID, ganttObj.lines[i].Task,
+            ganttObj.lines[i].Resource,
+            ganttObj.lines[i]['Start Date'],  null, 
+            ganttObj.lines[i]['duration'],  0,  
+            // null
+            ganttObj.lines[i]['Dependant on']
+        ]
+            ]
+        )
+      }           
+
+      var options = {
+        height: 800,
+        gantt: {
+            criticalPathEnabled: false,
+            defaultStartDateMillis: ganttObj.defaultStartDateMillis,
+            trackHeight: 30
+        }
+      };
+
+      var chart = new google.visualization.Gantt(document.getElementById('chart_div'));
+
+      chart.draw(data, options);
+    }
+
+    </script>
+</head>
+
+<body>
+    <p>
+        Paste here:
+    </p>
+    <textarea id='user_input'>
+
+ID	Task	Start Date	Resource	Dependant on	80%	90%
+Gale2:0	Gale2	Feb 7, 2021			0.5	
+Gale2:Query_mock	Gale Query API Mockup		Engine1	Gale2:0	1	2
+Gale2:Query_api	Gale Query API		Engine1	Gale2:Query_mock	3	4
+KB_UX	UX		App1	Gale2:Query_mock	3	4.5
+ETL	Issue kind ETL		DE1		2	3
+6	Final QA		QA1	Gale2:Query_api, KB_UX, ETL	1	2
+
+
+</textarea>
+    <p>
+        <a href='javascript:create_gantt()'>Create gantt</a>
+    </p>
+
+    <p>    
+        <div id="chart_div" style="height: max-content;"></div>
+    </p>
+    
+</body>
+</html>
+      
